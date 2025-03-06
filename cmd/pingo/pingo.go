@@ -2,6 +2,7 @@ package main
 
 import (
 	"math/rand"
+	"strconv"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -21,10 +22,40 @@ type Ball = struct {
 	pos       rl.Vector2
 	size      float32
 	direction rl.Vector2
+	velocity  float32
+}
+
+func createBall() Ball {
+	return Ball{
+		pos:  rl.NewVector2(windowWidth/2-ballSize/2, windowHeight/2-ballSize/2),
+		size: ballSize,
+		direction: rl.Vector2Normalize(rl.NewVector2(
+			1,
+			rand.Float32()*5-2.5,
+		)),
+		velocity: rand.Float32()*6 + 4,
+	}
+}
+
+type Stats = struct {
+	player1Points int
+	player2Points int
+}
+
+func checkGoal(ball *Ball, stats *Stats) {
+	if ball.pos.X <= ballSize {
+		stats.player2Points += 1
+		*ball = createBall()
+	}
+	if ball.pos.X+ball.size >= windowWidth {
+		stats.player1Points += 1
+		*ball = createBall()
+	}
 }
 
 func updateBallPosition(ball *Ball, player1 rl.Rectangle, player2 rl.Rectangle) {
-	newPos := rl.Vector2Add(ball.pos, ball.direction)
+	accelerationVec := rl.Vector2Scale(ball.direction, ball.velocity)
+	newPos := rl.Vector2Add(ball.pos, accelerationVec)
 
 	// check collisions with border
 	if newPos.X < ballSize {
@@ -121,13 +152,11 @@ func main() {
 		Height: batHeight,
 	}
 
-	ball := Ball{
-		pos:  rl.NewVector2(windowWidth/2-ballSize/2, windowHeight/2-ballSize/2),
-		size: ballSize,
-		direction: rl.NewVector2(
-			rand.Float32()*(float32(rand.Intn(10))+1),
-			rand.Float32()*(float32(rand.Intn(10))+1),
-		),
+	ball := createBall()
+
+	stats := Stats{
+		player1Points: 0,
+		player2Points: 0,
 	}
 
 	// game loop
@@ -137,6 +166,7 @@ func main() {
 		updatePlayerPosition(&player1, false)
 		updatePlayerPosition(&player2, true)
 		updateBallPosition(&ball, player1, player2)
+		checkGoal(&ball, &stats)
 
 		// drawing
 		rl.BeginDrawing()
@@ -145,6 +175,9 @@ func main() {
 		rl.DrawRectangleRec(player1, rl.White)
 		rl.DrawRectangleRec(player2, rl.White)
 		rl.DrawCircleV(ball.pos, ball.size, rl.White)
+
+		rl.DrawText(strconv.Itoa(stats.player1Points), 128, 16, 32, rl.White)
+		rl.DrawText(strconv.Itoa(stats.player2Points), windowWidth-128, 16, 32, rl.White)
 
 		rl.EndDrawing()
 	}
